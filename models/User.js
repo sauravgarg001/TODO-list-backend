@@ -53,9 +53,6 @@ let userSchema = new mongoose.Schema({
     },
     friends: [friendsSubSchema],
     friendRequests: [friendRequestsSubSchema],
-    lastSeen: {
-        type: Date
-    },
     createdOn: {
         type: Date,
         default: Date.now

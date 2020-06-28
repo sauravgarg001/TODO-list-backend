@@ -30,8 +30,8 @@ app.use(helmet());
 //Routes
 var indexRouter = require('./routes/index');
 var userRouter = require('./routes/user');
-app.use('/', indexRouter);
-app.use('/users', userRouter);
+app.use(`${appConfig.apiVersion}/`, indexRouter);
+app.use(`${appConfig.apiVersion}/users`, userRouter);
 
 //Mongoose connection
 const connect = mongoose.connect(appConfig.db.url, {
