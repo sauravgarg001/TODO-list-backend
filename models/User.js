@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 let friendsSubSchema = new mongoose.Schema({
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'User',
+        required: true
     },
     createdOn: {
         type: Date,
@@ -14,9 +15,33 @@ let friendsSubSchema = new mongoose.Schema({
 let friendRequestsSubSchema = new mongoose.Schema({
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'User',
+        required: true
     },
     createdOn: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
+let listSubSchema = new mongoose.Schema({
+    listId: {
+        type: String,
+        required: true
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    isActive: {
+        type: Boolean,
+        default: false
+    },
+    createdOn: {
+        type: Date,
+        default: Date.now
+    },
+    modifiedOn: {
         type: Date,
         default: Date.now
     }
@@ -53,6 +78,7 @@ let userSchema = new mongoose.Schema({
     },
     friends: [friendsSubSchema],
     friendRequests: [friendRequestsSubSchema],
+    lists: [listSubSchema],
     createdOn: {
         type: Date,
         default: Date.now

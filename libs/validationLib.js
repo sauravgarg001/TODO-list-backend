@@ -22,6 +22,13 @@ let validationsLib = {
         } else {
             return false;
         }
+    },
+    index: (index) => {
+        if (!isNaN(parseFloat(index))) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
 

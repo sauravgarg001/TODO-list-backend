@@ -11,6 +11,7 @@ const appConfig = require('./config/configApp');
 //Models
 const UserModel = require('./models/User');
 const AuthModel = require('./models/Auth');
+const ListModel = require('./models/List');
 
 var app = express();
 
@@ -30,8 +31,10 @@ app.use(helmet());
 //Routes
 var indexRouter = require('./routes/index');
 var userRouter = require('./routes/user');
+let listRouter = require('./routes/list');
 app.use(`${appConfig.apiVersion}/`, indexRouter);
 app.use(`${appConfig.apiVersion}/users`, userRouter);
+app.use(`${appConfig.apiVersion}/lists`, listRouter);
 
 //Mongoose connection
 const connect = mongoose.connect(appConfig.db.url, {
