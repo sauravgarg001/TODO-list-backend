@@ -14,6 +14,33 @@ const token = require('../libs/tokenLib');
 const UserModel = mongoose.model('User');
 const AuthModel = mongoose.model('Auth');
 
+//Commom Functions Start-->
+
+let getUserObjectId = (data) => {
+    return new Promise((resolve, reject) => {
+        let findQuery;
+        if (data.email)
+            findQuery = { email: data.email }
+        else if (data.userId)
+            findQuery = { userId: data.userId }
+        UserModel.findOne(findQuery, { _id: 1 })
+            .then((user) => {
+                if (check.isEmpty(user)) {
+                    logger.error('No User Found', 'userController: getUserObjectId()', 7);
+                    reject(response.generate(true, 'No User Found', 404, null));
+                } else {
+                    logger.info('User Found', 'userController: getUserObjectId()', 10);
+                    resolve(user._id);
+                }
+            })
+            .catch((err) => {
+                logger.error(err.message, 'userController: getUserObjectId()', 10);
+                reject(response.generate(true, 'Failed to perform action', 500, null));
+            });
+    });
+};
+
+//<--Commom Functions End
 
 let userController = {
 
@@ -92,8 +119,6 @@ let userController = {
             return new Promise((resolve, reject) => {
 
                 UserModel.findOne({ email: req.body.email })
-                    .populate('friends.user_id', 'userId firstName lastName -_id')
-                    .populate('friendRequests.user_id', 'userId firstName lastName -_id')
                     .then((user) => {
                         if (check.isEmpty(user)) {
                             logger.error('No User Found', 'userController: findUser()', 7);
@@ -122,6 +147,8 @@ let userController = {
                             delete userObj.__v;
                             delete userObj.createdOn;
                             delete userObj.modifiedOn;
+                            delete userObj.friends;
+                            delete userObj.friendRequests;
                             resolve(userObj);
                         } else {
                             logger.error('Login Failed Due To Invalid Password', 'userController: validatePassword()', 10);
@@ -141,7 +168,6 @@ let userController = {
                     .then((tokenDetails) => {
                         logger.info('Token Generated', 'userController: generateToken()', 10);
                         tokenDetails.userId = user.userId;
-                        tokenDetails.user = user;
                         resolve(tokenDetails);
                     })
                     .catch((err) => {
@@ -214,11 +240,9 @@ let userController = {
 
     getUsers: (req, res) => {
 
-        UserModel.find()
-            .populate('friends.user_id', 'userId firstName lastName -_id')
-            .populate('friendRequests.user_id', 'userId firstName lastName -_id')
-            .select('userId firstName lastName friends friendRequests')
-            .exec()
+        UserModel.find({
+                userId: { $ne: req.user.userId }
+            }, { _id: 0, firstName: 1, lastName: 1, email: 1 })
             .then((users) => {
                 if (check.isEmpty(users)) {
                     logger.info('No User Found', 'User Controller: getUnspammedUsers');
@@ -240,9 +264,9 @@ let userController = {
     getUser: (req, res) => {
 
         UserModel.findOne({ 'userId': req.user.userId })
-            .populate('friends.user_id', 'userId firstName lastName -_id')
-            .populate('friendRequests.user_id', 'userId firstName lastName -_id')
-            .select('userId firstName lastName friends friendRequests')
+            .populate('friends.user_id', 'firstName lastName email -_id')
+            .populate('friendRequests.user_id', 'firstName lastName email -_id')
+            .select('-_id userId firstName lastName email mobileNumber friends friendRequests')
             .exec()
             .then((user) => {
                 if (check.isEmpty(user)) {
@@ -297,8 +321,8 @@ let userController = {
                 $set: data
             }, { new: true }) //To return updated document
             //.update({ 'userId': req.user.userId }, req.body) //Alternative
-            .populate('friends.user_id', 'userId firstName lastName -_id')
-            .populate('friendRequests.user_id', 'userId firstName lastName -_id')
+            .populate('friends.user_id', 'email firstName lastName -_id')
+            .populate('friendRequests.user_id', 'email firstName lastName -_id')
             .select('userId firstName lastName friends friendRequests')
             .exec()
             .then((user) => {
@@ -314,6 +338,372 @@ let userController = {
                 res.status(err.status);
                 logger.error(err.message, 'User Controller:editUser', 10);
                 res.send(response.generate(true, 'Failed To edit user details', 500, null));
+            });
+    },
+
+    requestSend: (req, res) => {
+        //Local Function Start-->
+
+        let validateParams = () => {
+            return new Promise((resolve, reject) => {
+                if (check.isEmpty(req.body.email)) {
+                    logger.error('Parameters Missing', 'userController: requestSend(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters missing.', 403, null));
+                } else if (!validate.email(req.body.email)) {
+                    logger.error('Invalid Index Parameter', 'userController: requestSend(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters invalid.', 403, null));
+                } else {
+                    logger.info('Parameters Validated', 'userController: requestSend(): validateParams()', 9);
+                    resolve({ userId: req.user.userId });
+                }
+            });
+        }
+
+        let removeFromFriendRequests = (user_id) => {
+            req.user._id = user_id;
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    email: req.body.email
+                }
+                let updateQuery = {
+                    $pull: {
+                        friendRequests: { user_id: user_id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Old Request Deleted', 'userController: removeFromFriendRequests()', 10);
+                            resolve(true);
+                        } else {
+                            logger.error('No Old Request', 'userController: removeFromFriendRequests()', 10);
+                            resolve(false);
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: removeFromFriendRequests()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        let addToFriendRequests = (wasSendEarlier) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    email: req.body.email
+                }
+                let updateQuery = {
+                    $addToSet: {
+                        friendRequests: { user_id: req.user._id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Request Send', 'userController: addToFriendRequests()', 10);
+                            if (wasSendEarlier)
+                                resolve(response.generate(false, 'New request send again', 200, null));
+                            else
+                                resolve(response.generate(false, 'Request send', 200, null));
+                        } else {
+                            logger.error('Request Not Send', 'userController: addToFriendRequests()', 10);
+                            resolve(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: addToFriendRequests()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        //<--Local Functions End
+
+        validateParams()
+            .then(getUserObjectId)
+            .then(removeFromFriendRequests)
+            .then(addToFriendRequests)
+            .then((apiResponse) => {
+                res.status(apiResponse.status);
+                res.send(apiResponse);
+            })
+            .catch((error) => {
+                res.status(error.status);
+                res.send(error);
+            });
+    },
+
+    requestAccept: (req, res) => {
+        //Local Function Start-->
+
+        let validateParams = () => {
+            return new Promise((resolve, reject) => {
+                if (check.isEmpty(req.body.email)) {
+                    logger.error('Parameters Missing', 'userController: requestAccept(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters missing.', 403, null));
+                } else if (!validate.email(req.body.email)) {
+                    logger.error('Invalid Index Parameter', 'userController: requestAccept(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters invalid.', 403, null));
+                } else {
+                    logger.info('Parameters Validated', 'userController: requestAccept(): validateParams()', 9);
+                    resolve({ email: req.body.email });
+                }
+            });
+        }
+
+        let removeFromFriendRequests = (user_id) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    userId: req.user.userId
+                }
+                let updateQuery = {
+                    $pull: {
+                        friendRequests: { user_id: user_id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Request Deleted', 'userController: removeFromFriendRequests()', 10);
+                            resolve(user_id);
+                        } else {
+                            logger.error('No Request Deleted', 'userController: removeFromFriendRequests()', 10);
+                            reject(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: removeFromFriendRequests()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        let addToFriends = (user_id) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    userId: req.user.userId
+                }
+                let updateQuery = {
+                    $addToSet: {
+                        friends: { user_id: user_id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Added to Friends', 'userController: addToFriends()', 10);
+                            resolve({ userId: req.user.userId });
+                        } else {
+                            logger.error('Not Added to Friends', 'userController: addToFriends()', 10);
+                            resolve(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: addToFriends()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        let addToFriendsSender = (user_id) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    email: req.body.email
+                }
+                let updateQuery = {
+                    $addToSet: {
+                        friends: { user_id: user_id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Added to Friends of Sender', 'userController: addToFriendsSender()', 10);
+                            resolve(response.generate(false, 'Request accepted', 200, null));
+                        } else {
+                            logger.error('Not Added to Friends of Sender', 'userController: addToFriendsSender()', 10);
+                            resolve(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: addToFriendsSender()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        //<--Local Functions End
+
+        validateParams()
+            .then(getUserObjectId)
+            .then(removeFromFriendRequests)
+            .then(addToFriends)
+            .then(getUserObjectId)
+            .then(addToFriendsSender)
+            .then((apiResponse) => {
+                res.status(apiResponse.status);
+                res.send(apiResponse);
+            })
+            .catch((error) => {
+                res.status(error.status);
+                res.send(error);
+            });
+    },
+
+    requestDecline: (req, res) => {
+        //Local Function Start-->
+
+        let validateParams = () => {
+            return new Promise((resolve, reject) => {
+                if (check.isEmpty(req.query.email)) {
+                    logger.error('Parameters Missing', 'userController: requestDecline(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters missing.', 403, null));
+                } else if (!validate.email(req.query.email)) {
+                    logger.error('Invalid Index Parameter', 'userController: requestDecline(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters invalid.', 403, null));
+                } else {
+                    logger.info('Parameters Validated', 'userController: requestDecline(): validateParams()', 9);
+                    resolve({ email: req.query.email });
+                }
+            });
+        }
+
+        let removeFromFriendRequests = (user_id) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    userId: req.user.userId
+                }
+                let updateQuery = {
+                    $pull: {
+                        friendRequests: { user_id: user_id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Request Deleted', 'userController: removeFromFriendRequests()', 10);
+                            resolve(response.generate(false, 'Friend request declined', 200, null));
+                        } else {
+                            logger.error('No Request Deleted', 'userController: removeFromFriendRequests()', 10);
+                            reject(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: removeFromFriendRequests()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        //<--Local Functions End
+
+        validateParams()
+            .then(getUserObjectId)
+            .then(removeFromFriendRequests)
+            .then((apiResponse) => {
+                res.status(apiResponse.status);
+                res.send(apiResponse);
+            })
+            .catch((error) => {
+                res.status(error.status);
+                res.send(error);
+            });
+    },
+
+    removeFriend: (req, res) => {
+        //Local Function Start-->
+
+        let validateParams = () => {
+            return new Promise((resolve, reject) => {
+                if (check.isEmpty(req.query.email)) {
+                    logger.error('Parameters Missing', 'userController: removeFriend(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters missing.', 403, null));
+                } else if (!validate.email(req.query.email)) {
+                    logger.error('Invalid Index Parameter', 'userController: removeFriend(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters invalid.', 403, null));
+                } else {
+                    logger.info('Parameters Validated', 'userController: removeFriend(): validateParams()', 9);
+                    resolve({ email: req.query.email });
+                }
+            });
+        }
+
+        let removeFromFriends = (user_id) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    userId: req.user.userId
+                }
+                let updateQuery = {
+                    $pull: {
+                        friends: { user_id: user_id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Friend Removed', 'userController: removeFromFriends()', 10);
+                            resolve({ userId: req.user.userId });
+                        } else {
+                            logger.error('No Friend Removed', 'userController: removeFromFriends()', 10);
+                            reject(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: removeFromFriends()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        let removeFromFriendsOther = (user_id) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    email: req.query.email
+                }
+                let updateQuery = {
+                    $pull: {
+                        friends: { user_id: user_id }
+                    },
+                }
+
+                UserModel.update(findQuery, updateQuery)
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('Friend Removed', 'userController: removeFromFriendsOther()', 10);
+                            resolve(response.generate(false, 'Friend removed', 200, null));
+                        } else {
+                            logger.error('No Friend Removed', 'userController: removeFromFriendsOther()', 10);
+                            reject(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: removeFromFriendsOther()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        //<--Local Functions End
+
+        validateParams()
+            .then(getUserObjectId)
+            .then(removeFromFriends)
+            .then(getUserObjectId)
+            .then(removeFromFriendsOther)
+            .then((apiResponse) => {
+                res.status(apiResponse.status);
+                res.send(apiResponse);
+            })
+            .catch((error) => {
+                res.status(error.status);
+                res.send(error);
             });
     }
 

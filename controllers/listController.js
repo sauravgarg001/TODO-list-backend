@@ -115,7 +115,7 @@ let listController = {
                     reject(response.generate(true, 'parameters missing.', 403, null));
                 } else {
                     logger.info('Parameters Validated', 'listController: getList(): validateParams()', 9);
-                    resolve({ userId: req.user.userId, listId: req.body.listId });
+                    resolve({ userId: req.user.userId, listId: req.query.listId });
                 }
             });
         }
@@ -125,14 +125,13 @@ let listController = {
                 let findQuery = {
                     listId: req.query.listId
                 }
-
                 ListModel.findOne(findQuery, { _id: 0, __v: 0 })
                     .populate('contributers.user_id', 'userId firstName lastName -_id')
                     .exec()
                     .then((list) => {
                         if (check.isEmpty(list)) {
                             logger.info('No List Found', 'listController: findList()');
-                            reject(response.generate(false, 'No Lists Found', 200, null));
+                            reject(response.generate(false, 'No List Found', 200, null));
                         } else {
                             logger.info('List Found', 'listController: findList()');
                             resolve(response.generate(false, 'List fetched', 200, list));
