@@ -44,6 +44,23 @@ let contributersSubSchema = new mongoose.Schema({ // In the begining there is on
     }
 }, { _id: false });
 
+let changesSubSchema = new mongoose.Schema({ // To Undo Changes
+    by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    operationToUndo: {
+        type: String,
+        required: true,
+    },
+    paramsToUndo: mongoose.Schema.Types.Mixed,
+    createdOn: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
 let listSchema = new mongoose.Schema({
     listId: {
         type: String,
@@ -57,6 +74,7 @@ let listSchema = new mongoose.Schema({
     },
     tasks: [tasksSubSchema],
     contributers: [contributersSubSchema],
+    changes: [changesSubSchema],
     createdOn: {
         type: Date,
         default: Date.now

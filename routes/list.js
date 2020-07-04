@@ -23,4 +23,5 @@ router.route('/contributers')
     .delete(auth.isAuthorized, listController.removeContributer);
 router.route('/contributers/access/edit').put(auth.isAuthorized, listController.grantAccessToEdit);
 router.route('/contributers/access/read').put(auth.isAuthorized, listController.grantAccessToRead);
+router.route('/undo').put(auth.isAuthorized, listController.undo);
 module.exports = router;

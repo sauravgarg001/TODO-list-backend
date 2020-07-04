@@ -130,7 +130,7 @@ let listController = {
                 let findQuery = {
                     listId: req.query.listId
                 }
-                ListModel.findOne(findQuery, { _id: 0, __v: 0 })
+                ListModel.findOne(findQuery, { _id: 0, __v: 0, changes: 0 })
                     .populate('contributers.user_id', 'userId email firstName lastName -_id')
                     .exec()
                     .then((list) => {
@@ -195,6 +195,7 @@ let listController = {
                     .then((list) => {
                         delete newList.tasks;
                         delete newList.contributers;
+                        delete newList.changes;
                         newList['isActive'] = false;
                         logger.info('List Created', 'listController: createList()');
                         resolve(response.generate(false, 'List created', 200, newList));
@@ -258,37 +259,8 @@ let listController = {
                     reject(response.generate(true, 'parameters missing.', 403, null));
                 } else {
                     logger.info('Parameters Validated', 'listController: deleteList(): validateParams()', 9);
-                    resolve();
+                    resolve({ userId: req.user.userId });
                 }
-            });
-        }
-
-        let updateUser = () => {
-            return new Promise((resolve, reject) => {
-
-                UserModel.update({
-                        userId: req.user.userId,
-                    }, {
-                        $pull: {
-                            lists: {
-                                listId: req.query.listId
-                            }
-                        },
-                        modifiedOn: time.now()
-                    })
-                    .then((result) => {
-                        if (result.nModified != 0) {
-                            logger.info('User Updated', 'listController: deleteList(): updateUser()', 10);
-                            resolve({ userId: req.user.userId });
-                        } else {
-                            logger.error('User Not Updated', 'listController: deleteList(): updateUser()', 10);
-                            resolve(response.generate(true, 'Failed to perform action', 403, null));
-                        }
-                    })
-                    .catch((err) => {
-                        logger.error(err.message, 'listController: deleteList(): updateUser()', 10);
-                        reject(response.generate(true, 'Failed to perform action', 500, null));
-                    });
             });
         }
 
@@ -324,7 +296,7 @@ let listController = {
 
         let deleteList = (contributer) => {
             return new Promise((resolve, reject) => {
-
+                req.user.isOwner = contributer.isOwner;
                 if (contributer.isOwner) {
                     ListModel.deleteOne({
                             listId: req.query.listId
@@ -369,13 +341,50 @@ let listController = {
             });
         }
 
+        let updateUser = (apiResponse) => {
+            return new Promise((resolve, reject) => {
+                let findQuery;
+                if (req.user.isOwner)
+                    findQuery = {
+                        lists: {
+                            $elemMatch: {
+                                listId: req.query.listId
+                            }
+                        }
+                    };
+                else
+                    findQuery = { userId: req.user.userId };
+                UserModel.updateMany(findQuery, {
+                        $pull: {
+                            lists: {
+                                listId: req.query.listId
+                            }
+                        },
+                        $set: { modifiedOn: time.now() }
+                    })
+                    .then((result) => {
+                        if (result.nModified != 0) {
+                            logger.info('User Updated', 'listController: deleteList(): updateUser()', 10);
+                            resolve(apiResponse);
+                        } else {
+                            logger.error('User Not Updated', 'listController: deleteList(): updateUser()', 10);
+                            resolve(response.generate(true, 'Failed to perform action', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'listController: deleteList(): updateUser()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
         //<--Local Functions End
 
         validateParams()
-            .then(updateUser)
             .then(getUserObjectId)
             .then(getList)
             .then(deleteList)
+            .then(updateUser)
             .then((apiResponse) => {
                 res.status(apiResponse.status);
                 res.send(apiResponse);
@@ -478,7 +487,7 @@ let listController = {
                     listId: req.body.listId
                 }
 
-                ListModel.findOne(findQuery, { _id: 0, __v: 0 })
+                ListModel.findOne(findQuery, { _id: 0, __v: 0, changes: 0 })
                     .populate('contributers.user_id', 'email userId firstName lastName -_id')
                     .exec()
                     .then((list) => {
@@ -568,6 +577,15 @@ let listController = {
                             }
                             tempTask.subTasks.push({ text: req.body.text, subTasks: mongoose.Types.Array(), isOpen: true, modifiedOn: time.now(), createdOn: time.now() });
                         }
+                        list.changes.push({
+                            by: user_id,
+                            operationToUndo: 'deleteTask',
+                            paramsToUndo: {
+                                index: req.body.index
+                            },
+                            createdOn: time.now()
+                        });
+                        list.markModified('changes');
                         list.markModified('tasks');
                         list.save(function(err) {
                             if (err) {
@@ -651,11 +669,31 @@ let listController = {
                             tempTasks = tempTask.subTasks;
                             index = index.substring(index.indexOf('.') + 1);
                         }
+                        let text = tempTasks[index].text;
+                        let modifiedOn = tempTasks[index].modifiedOn;
+                        let createdOn = tempTasks[index].createdOn;
+                        let isOpen = tempTasks[index].isOpen;
+                        let subTasks = tempTasks[index].subTasks;
                         tempTasks.splice(parseInt(index), 1);
+
+                        list.changes.push({
+                            by: user_id,
+                            operationToUndo: 'addTask',
+                            paramsToUndo: {
+                                index: req.query.index,
+                                text: text,
+                                isOpen: isOpen,
+                                subTasks: subTasks,
+                                createdOn: createdOn,
+                                modifiedOn: modifiedOn
+                            },
+                            createdOn: time.now(),
+                        });
+                        list.markModified('changes');
                         list.markModified('tasks');
                         list.save(function(err) {
                             if (err) {
-                                logger.error(err.message, 'listController: addTask()', 10);
+                                logger.error(err.message, 'listController: deleteTask()', 10);
                                 resolve(response.generate(true, 'Failed to perform action', 500, null));
                             } else {
                                 logger.info('Task Deleted', 'listController: deleteTask()', 10);
@@ -736,6 +774,18 @@ let listController = {
                             index = index.substring(index.indexOf('.') + 1);
                         }
                         tempTasks[parseInt(index)].isOpen = false;
+                        let modifiedOn = time.now();
+                        tempTasks[parseInt(index)].modifiedOn = modifiedOn;
+                        list.changes.push({
+                            by: user_id,
+                            operationToUndo: 'markTaskAsOpen',
+                            paramsToUndo: {
+                                index: req.body.index,
+                                modifiedOn: modifiedOn
+                            },
+                            createdOn: time.now()
+                        });
+                        list.markModified('changes');
                         list.markModified('tasks');
                         list.save(function(err) {
                             if (err) {
@@ -820,6 +870,18 @@ let listController = {
                             index = index.substring(index.indexOf('.') + 1);
                         }
                         tempTasks[parseInt(index)].isOpen = true;
+                        let modifiedOn = time.now();
+                        tempTasks[parseInt(index)].modifiedOn = modifiedOn;
+                        list.changes.push({
+                            by: user_id,
+                            operationToUndo: 'markTaskAsDone',
+                            paramsToUndo: {
+                                index: req.body.index,
+                                modifiedOn: modifiedOn
+                            },
+                            createdOn: time.now()
+                        });
+                        list.markModified('changes');
                         list.markModified('tasks');
                         list.save(function(err) {
                             if (err) {
@@ -1268,6 +1330,160 @@ let listController = {
             .then(callSenderObject)
             .then(getUserObjectId)
             .then(giveEditAccess)
+            .then((apiResponse) => {
+                res.status(apiResponse.status);
+                res.send(apiResponse);
+            })
+            .catch((error) => {
+                res.status(error.status);
+                res.send(error);
+            });
+    },
+    undo: (req, res) => {
+        //Local Function Start-->
+
+        let validateParams = () => {
+            return new Promise((resolve, reject) => {
+                if (check.isEmpty(req.body.listId)) {
+                    logger.error('Parameters Missing', 'listController: undo(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters missing.', 403, null));
+                } else {
+                    logger.info('Parameters Validated', 'listController: undo(): validateParams()', 9);
+                    resolve({ userId: req.user.userId, listId: req.body.listId });
+                }
+            });
+        }
+
+        let callObject = () => {
+            return new Promise((resolve, reject) => {
+                resolve({ userId: req.user.userId });
+            });
+        }
+
+        let getList = (user_id) => {
+            return new Promise((resolve, reject) => {
+                let findQuery = {
+                    listId: req.body.listId
+                }
+
+                ListModel.findOne(findQuery)
+                    .then((list) => {
+                        let canEdit = false;
+                        for (let i = 0; i < list.contributers.length; i++) {
+                            if (list.contributers[i].user_id.toString() == user_id.toString() && list.contributers[i].canEdit) {
+                                canEdit = true;
+                                break;
+                            }
+                        }
+                        if (canEdit) {
+                            logger.info('Has List Edit Access', 'listController: undo(): getList()', 9);
+                            resolve(list);
+                        } else {
+                            logger.error(err.message, 'listController: undo(): getList()', 10);
+                            reject(response.generate(true, 'Unauthorized Access', 403, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'listController: undo(): getList()', 10);
+                        reject(response.generate(true, 'Failed to perform action', 500, null));
+                    });
+            });
+        }
+
+        let undoChanges = (list) => {
+            return new Promise((resolve, reject) => {
+                if (list.changes.length == 0) {
+                    logger.error("No More Changes Left", 'listController: undoChanges()', 10);
+                    reject(response.generate(true, 'No More Undo Operations', 403, null));
+                } else {
+                    let changes = list.changes[list.changes.length - 1];
+                    let index = changes.paramsToUndo.index;
+                    if (changes.operationToUndo == 'addTask') {
+                        let tempTasks = list.tasks;
+                        let tempTask;
+                        while (true) {
+                            if (index.indexOf('.') == -1 || index == -1) {
+                                break;
+                            } else
+                                tempTask = tempTasks[parseInt(index.substring(0, index.indexOf('.')))];
+                            tempTasks = tempTask.subTasks;
+                            index = index.substring(index.indexOf('.') + 1);
+                        }
+                        tempTasks.push({
+                            text: changes.paramsToUndo.text,
+                            subTasks: changes.paramsToUndo.subTasks,
+                            isOpen: changes.paramsToUndo.isOpen,
+                            modifiedOn: changes.paramsToUndo.modifiedOn,
+                            createdOn: changes.paramsToUndo.createdOn
+                        });
+                    } else if (changes.operationToUndo == 'deleteTask') {
+                        if (index == -1) {
+                            list.tasks.pop();
+                        } else {
+                            let tempTasks = list.tasks;
+                            let tempTask;
+                            while (true) {
+                                if (index.indexOf('.') == -1) {
+                                    tempTask = tempTasks[parseInt(index)];
+                                    break;
+                                } else
+                                    tempTask = tempTasks[parseInt(index.substring(0, index.indexOf('.')))];
+                                tempTasks = tempTask.subTasks;
+                                index = index.substring(index.indexOf('.') + 1);
+                            }
+                            tempTask.subTasks.pop();
+                        }
+                    } else if (changes.operationToUndo == 'markTaskAsDone') {
+                        let tempTasks = list.tasks;
+                        let tempTask;
+                        while (true) {
+                            if (index.indexOf('.') == -1) {
+                                break;
+                            } else
+                                tempTask = tempTasks[parseInt(index.substring(0, index.indexOf('.')))];
+                            tempTasks = tempTask.subTasks;
+                            index = index.substring(index.indexOf('.') + 1);
+                        }
+                        tempTasks[parseInt(index)].isOpen = false;
+                        tempTasks[parseInt(index)].modifiedOn = changes.paramsToUndo.modifiedOn;
+                    } else if (changes.operationToUndo == 'markTaskAsOpen') {
+                        let tempTasks = list.tasks;
+                        let tempTask;
+                        while (true) {
+                            if (index.indexOf('.') == -1) {
+                                break;
+                            } else
+                                tempTask = tempTasks[parseInt(index.substring(0, index.indexOf('.')))];
+                            tempTasks = tempTask.subTasks;
+                            index = index.substring(index.indexOf('.') + 1);
+                        }
+                        tempTasks[parseInt(index)].isOpen = true;
+                        tempTasks[parseInt(index)].modifiedOn = changes.paramsToUndo.modifiedOn;
+                    }
+                    list.changes.pop();
+                    list.markModified('changes');
+                    list.markModified('tasks');
+                    list.save(function(err) {
+                        if (err) {
+                            logger.error(err.message, 'listController: undoChanges()', 10);
+                            reject(response.generate(true, 'Failed to perform action', 500, null));
+                        } else {
+                            logger.info('Task Deleted', 'listController: undoChanges()', 10);
+                            resolve(response.generate(false, 'Changes Undone', 200, list.tasks));
+                        }
+                    });
+                }
+            });
+        }
+
+        //<--Local Functions End
+
+        validateParams()
+            .then(validateUserListAccess)
+            .then(callObject)
+            .then(getUserObjectId)
+            .then(getList)
+            .then(undoChanges)
             .then((apiResponse) => {
                 res.status(apiResponse.status);
                 res.send(apiResponse);
