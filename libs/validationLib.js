@@ -7,12 +7,18 @@ let validationsLib = {
             return false;
         }
     },
-    mobileNumber: (mobileNumber) => {
-        let mobileNumberRegex = /^[6-9]\d{9}$/; /* 10 digits starts with 6-9 */
-        if (mobileNumber.match(mobileNumberRegex)) {
-            return true;
-        } else {
+    mobileNumber: (mobileNumber, countryCode) => {
+        if (countryCode == '91') {
+            let mobileNumberRegex = /^[6-9]\d{9}$/; /* 10 digits starts with 6-9 for India*/
+            if (mobileNumber.match(mobileNumberRegex)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else if (isNaN(mobileNumber)) {
             return false;
+        } else {
+            return true;
         }
     },
     password: (password) => {

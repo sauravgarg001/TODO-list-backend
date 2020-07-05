@@ -80,7 +80,6 @@ let setServer = (server) => {
                                                                 }
                                                             }
                                                         }
-                                                        console.log(onlineUsers);
                                                         socket.emit('online-users', onlineUsers);
                                                     })
                                                     .catch((err) => {

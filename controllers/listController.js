@@ -730,13 +730,13 @@ let listController = {
         let validateParams = () => {
             return new Promise((resolve, reject) => {
                 if (check.isEmpty(req.body.listId) || check.isEmpty(req.body.index)) {
-                    logger.error('Parameters Missing', 'listController: deleteTask(): validateParams()', 9);
+                    logger.error('Parameters Missing', 'listController: markTaskAsDone(): validateParams()', 9);
                     reject(response.generate(true, 'parameters missing.', 403, null));
                 } else if (!validate.index(req.body.index)) {
-                    logger.error('Invalid Index Parameter', 'listController: deleteTask(): validateParams()', 9);
+                    logger.error('Invalid Index Parameter', 'listController: markTaskAsDone(): validateParams()', 9);
                     reject(response.generate(true, 'parameters invalid.', 403, null));
                 } else {
-                    logger.info('Parameters Validated', 'listController: deleteTask(): validateParams()', 9);
+                    logger.info('Parameters Validated', 'listController: markTaskAsDone(): validateParams()', 9);
                     resolve({ userId: req.user.userId, listId: req.body.listId });
                 }
             });
@@ -792,8 +792,8 @@ let listController = {
                                 logger.error(err.message, 'listController: changeStatusToDone()', 10);
                                 resolve(response.generate(true, 'Failed to perform action', 500, null));
                             } else {
-                                logger.info('Task Deleted', 'listController: changeStatusToDone()', 10);
-                                resolve(response.generate(false, 'Task deleted from list', 200, null));
+                                logger.info('Task Done', 'listController: changeStatusToDone()', 10);
+                                resolve(response.generate(false, 'Task marked as done', 200, null));
                             }
                         });
                     })
@@ -826,13 +826,13 @@ let listController = {
         let validateParams = () => {
             return new Promise((resolve, reject) => {
                 if (check.isEmpty(req.body.listId) || check.isEmpty(req.body.index)) {
-                    logger.error('Parameters Missing', 'listController: deleteTask(): validateParams()', 9);
+                    logger.error('Parameters Missing', 'listController: markTaskAsOpen(): validateParams()', 9);
                     reject(response.generate(true, 'parameters missing.', 403, null));
                 } else if (!validate.index(req.body.index)) {
-                    logger.error('Invalid Index Parameter', 'listController: deleteTask(): validateParams()', 9);
+                    logger.error('Invalid Index Parameter', 'listController: markTaskAsOpen(): validateParams()', 9);
                     reject(response.generate(true, 'parameters invalid.', 403, null));
                 } else {
-                    logger.info('Parameters Validated', 'listController: deleteTask(): validateParams()', 9);
+                    logger.info('Parameters Validated', 'listController: markTaskAsOpen(): validateParams()', 9);
                     resolve({ userId: req.user.userId, listId: req.body.listId });
                 }
             });
@@ -888,8 +888,8 @@ let listController = {
                                 logger.error(err.message, 'listController: changeStatusToOpen()', 10);
                                 resolve(response.generate(true, 'Failed to perform action', 500, null));
                             } else {
-                                logger.info('Task Deleted', 'listController: changeStatusToOpen()', 10);
-                                resolve(response.generate(false, 'Task deleted from list', 200, null));
+                                logger.info('Task Open', 'listController: changeStatusToOpen()', 10);
+                                resolve(response.generate(false, 'Task marked as open', 200, null));
                             }
                         });
                     })

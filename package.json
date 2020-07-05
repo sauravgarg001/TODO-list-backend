@@ -1,21 +1,27 @@
 {
     "name": "todo-list-app",
-    "version": "0.0.0",
+    "version": "1.0.0",
+    "description": "Real Time TODO-list app",
+    "apidoc": {
+        "title": "TODO-list-api",
+        "url": "http://localhost:3000/v1"
+    },
     "private": true,
     "scripts": {
         "start": "node ./bin/www"
     },
     "dependencies": {
+        "bcrypt": "^4.0.1",
         "cookie-parser": "~1.4.4",
         "debug": "~2.6.9",
         "express": "~4.16.1",
         "helmet": "^3.21.3",
-        "morgan": "~1.9.1",
-        "bcrypt": "^4.0.1",
         "jsonwebtoken": "^8.1.0",
         "moment": "^2.18.1",
         "moment-timezone": "^0.5.13",
         "mongoose": "^5.9.12",
+        "morgan": "~1.9.1",
+        "nodemailer": "^6.4.10",
         "pino": "^4.7.2",
         "redis": "^3.0.2",
         "shortid": "^2.2.8",

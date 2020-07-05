@@ -11,6 +11,9 @@ let passwordLib = {
     },
     comparePassword: (oldPassword, hashpassword) => {
         return bcrypt.compare(oldPassword, hashpassword);
+    },
+    createOTP: () => {
+        return Math.floor(100000 + Math.random() * 900000);
     }
 }
 

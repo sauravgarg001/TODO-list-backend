@@ -62,6 +62,9 @@ let userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    OTP: {
+        type: String
+    },
     password: {
         type: String,
         required: true
@@ -70,6 +73,10 @@ let userSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true
+    },
+    countryCode: {
+        type: String,
+        required: true
     },
     mobileNumber: {
         type: Number,
@@ -86,7 +93,8 @@ let userSchema = new mongoose.Schema({
     modifiedOn: {
         type: Date,
         default: Date.now
-    }
+    },
+
 });
 
 module.exports = mongoose.model('User', userSchema);

@@ -9,6 +9,7 @@ const logger = require('../libs/loggerLib');
 const validate = require('../libs/validationLib');
 const check = require('../libs/checkLib');
 const token = require('../libs/tokenLib');
+const mail = require('../libs/mailLib');
 
 //Models
 const UserModel = mongoose.model('User');
@@ -52,13 +53,13 @@ let userController = {
             return new Promise((resolve, reject) => {
                 console.log(req.body);
 
-                if (!req.body.email || !req.body.mobileNumber || !req.body.password) {
+                if (!req.body.email || !req.body.mobileNumber || !req.body.password || !req.body.firstName || !req.body.lastName || !req.body.countryCode) {
                     logger.error('Field Missing During User Creation', 'userController: validateUserInput()', 5);
                     reject(response.generate(true, 'One or More Parameter(s) is missing', 400, null));
                 } else if (!validate.email(req.body.email)) {
                     logger.error('Email Field Not Valid During User Creation', 'userController: validateUserInput()', 5);
                     reject(response.generate(true, 'Email does not met the requirement', 400, null));
-                } else if (!validate.mobileNumber(req.body.mobileNumber)) {
+                } else if (!validate.mobileNumber(req.body.mobileNumber, req.body.countryCode)) {
                     logger.error('Mobile Number Field Not Valid During User Creation', 'userController: validateUserInput()', 5);
                     reject(response.generate(true, 'Email does not met the requirement', 400, null));
                 } else if (!validate.password(req.body.password)) {
@@ -80,13 +81,14 @@ let userController = {
                     lastName: req.body.lastName,
                     email: req.body.email.toLowerCase(),
                     mobileNumber: req.body.mobileNumber,
-                    password: password.hashpassword(req.body.password)
+                    password: password.hashpassword(req.body.password),
+                    countryCode: req.body.countryCode
                 };
 
                 UserModel.create(newUser)
                     .then((user) => {
                         logger.info('User Created', 'userController: createUser', 10);
-                        resolve(user.toObject());
+                        resolve();
                     })
                     .catch((err) => {
                         logger.error(err.message, 'userController: createUser', 10);
@@ -100,9 +102,9 @@ let userController = {
 
         validateUserInput(req, res)
             .then(createUser)
-            .then((user) => {
+            .then(() => {
                 delete user.password;
-                res.send(response.generate(false, 'User created', 200, user));
+                res.send(response.generate(false, 'User created', 200, null));
             })
             .catch((err) => {
                 res.status(err.status);
@@ -149,6 +151,8 @@ let userController = {
                             delete userObj.modifiedOn;
                             delete userObj.friends;
                             delete userObj.friendRequests;
+                            delete userObj.OTP;
+                            delete userId.lists;
                             resolve(userObj);
                         } else {
                             logger.error('Login Failed Due To Invalid Password', 'userController: validatePassword()', 10);
@@ -309,8 +313,10 @@ let userController = {
             data['firstName'] = req.body.firstName;
         if (req.body.lastName)
             data['lastName'] = req.body.lastName;
-        if (req.body.mobileNumber && validate.mobileNumber(mobileNumber))
+        if (req.body.mobileNumber && req.body.countryCode && validate.mobileNumber(req.body.mobileNumber, req.body.countryCode)) {
             data['mobileNumber'] = req.body.mobileNumber;
+            data['countryCode'] = req.body.countryCode
+        }
         if (req.body.email && validate.email(email))
             data['email'] = req.body.email;
         if (req.body.password && validate.password(password))
@@ -704,6 +710,141 @@ let userController = {
             .catch((error) => {
                 res.status(error.status);
                 res.send(error);
+            });
+    },
+    forgotPassword: (req, res) => {
+
+        if (check.isEmpty(req.body.email) || !validate.email(req.body.email)) {
+            logger.error('Email Field Not Valid', 'userController: forgotPassword()', 5);
+            res.status(400);
+            res.send(response.generate(true, 'Invalid email!', 400, null));
+        } else {
+            UserModel.findOne({ 'email': req.body.email })
+                .then((user) => {
+                    if (check.isEmpty(user)) {
+                        logger.info('No User Found', 'userController: forgotPassword()');
+                        res.send(response.generate(true, 'Email is not registered', 404, null));
+                    } else {
+                        logger.info('User Found', 'userController: forgotPassword()');
+                        let OTP = password.createOTP();
+                        let data = {
+                            to: req.body.email,
+                            subject: 'Forgot Password OTP',
+                            text: `Dear ${user.firstName} ${user.lastName} your One Time Password(OTP) is ${OTP}, use it to change the existing password.`
+                        }
+                        mail.sendMail(data)
+                            .then((msg) => {
+                                logger.info(msg, 'userController: sendMail : forgotPassword()');
+                                user.modifiedOn = time.now();
+                                user.OTP = password.hashpassword(OTP.toString());
+                                user.save(function(err) {
+                                    if (err) {
+                                        res.status(500);
+                                        logger.error(err.message, 'userController: forgotPassword()', 10);
+                                        res.send(response.generate(true, 'Failed to perform action', 500, null));
+                                    } else {
+                                        res.status(200);
+                                        logger.info('OTP saved', 'userController: forgotPassword()', 10);
+                                        res.send(response.generate(false, 'OTP send to registered email', 200, null));
+                                    }
+                                });
+                            })
+                            .catch((err) => {
+                                res.status(500);
+                                logger.error(err, 'userController: forgotPassword()', 10);
+                                res.send(response.generate(true, 'Failed to perform operation', 500, null));
+                            });
+                    }
+                })
+                .catch((err) => {
+                    res.status(500);
+                    logger.error(err.message, 'userController: forgotPassword()', 10);
+                    res.send(response.generate(true, 'Failed to perform operation', 500, null));
+                });
+        }
+    },
+
+    changePassword: (req, res) => {
+
+        //Local Function Start-->
+
+        let validateParams = () => {
+            return new Promise((resolve, reject) => {
+                if (check.isEmpty(req.body.email) || check.isEmpty(req.body.OTP) || check.isEmpty(req.body.newPassword)) {
+                    logger.error('Parameters Missing', 'userController: changePassword(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters missing.', 403, null));
+                } else if (!validate.email(req.body.email) || !validate.password(req.body.newPassword)) {
+                    logger.error('Invalid Email Parameter', 'userController: changePassword(): validateParams()', 9);
+                    reject(response.generate(true, 'parameters invalid.', 403, null));
+                } else {
+                    logger.info('Parameters Validated', 'userController: changePassword(): validateParams()', 9);
+                    resolve();
+                }
+            });
+        }
+
+        let findUser = () => {
+            return new Promise((resolve, reject) => {
+
+                UserModel.findOne({ email: req.body.email })
+                    .then((user) => {
+                        if (check.isEmpty(user)) {
+                            logger.error('No User Found', 'userController: findUser()', 7);
+                            reject(response.generate(true, 'Account does not exists!', 404, null));
+                        } else {
+                            logger.info('User Found', 'userController: findUser()', 10);
+                            resolve(user);
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: findUser()', 10);
+                        res.send(response.generate(true, 'Failed to perform operation', 500, null));
+                    });
+            });
+        }
+
+        let validatePassword = (user) => {
+            return new Promise((resolve, reject) => {
+                password.comparePassword(req.body.OTP, user.OTP)
+                    .then((isMatch) => {
+                        if (isMatch) {
+                            logger.info('Password validated', 'userController: validatePassword()', 10);
+                            user.password = password.hashpassword(req.body.newPassword);
+                            delete user.OTP;
+                            user.save(function(err) {
+                                if (err) {
+                                    logger.error(err.message, 'userController: validatePassword()', 10);
+                                    resolve(response.generate(true, 'Failed to perform action', 500, null));
+                                } else {
+                                    logger.info('Password Changed', 'userController: validatePassword()', 10);
+                                    resolve(response.generate(false, 'Password changed', 200, null));
+                                }
+                            });
+                        } else {
+                            logger.error('Wrong OTP', 'userController: validatePassword()', 10);
+                            reject(response.generate(true, 'Wrong OTP!', 400, null));
+                        }
+                    })
+                    .catch((err) => {
+                        logger.error(err.message, 'userController: validatePassword()', 10);
+                        reject(response.generate(true, 'Login Failed', 500, null));
+                    });
+            });
+        }
+
+        //<--Local Functions End
+
+        findUser(req, res)
+            .then(validateParams)
+            .then(findUser)
+            .then(validatePassword)
+            .then((apiResponse) => {
+                res.status(apiResponse.status);
+                res.send(apiResponse);
+            })
+            .catch((err) => {
+                res.status(err.status);
+                res.send(err);
             });
     }
 
