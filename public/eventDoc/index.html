@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0" />
+    <title>Events</title>
+    <!-- CSS  -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.1/css/materialize.min.css">
+    <style>
+        /* Custom Stylesheet */
+        
+        .icon-block {
+            padding: 0 15px;
+        }
+        
+        .icon-block .material-icons {
+            font-size: inherit;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="black lighten-1" role="navigation">
+        <div class="nav-wrapper container">
+            <a id="logo-container" href="#" class="brand-logo" style="font-size:1.6em !important; color: white;"></a>
+            <ul class="right hide-on-med-and-down">
+                <li><a href="/apiDoc/">API Docs</a></li>
+            </ul>
+            <ul id="nav-mobile" class="side-nav">
+                <li><a href="/apiDoc/">API Docs</a></li>
+            </ul>
+            <a href="#" data-activates="nav-mobile" class="button-collapse"><i class="material-icons">menu</i></a>
+        </div>
+    </nav>
+    <div class="section no-pad-bot" style="margin-bottom: 0px" id="index-banner">
+        <div class="container" style="width: 80%">
+            <p style="font-size: 2em; font-weight: 540; text-align: center">Events documentation</p>
+            <div class="row">
+
+                <div class="col hide-on-small-only m3 l2">
+                    <ul class="section table-of-contents" style="position: fixed;top: 40px;">
+                        <li><a href="#listen" style="color: #03a9f4; font-size: 1.2em; font-weight: bold">Listen</a></li>
+                        <li><a href="#verifyUser">verifyUser</a></li>
+                        <li><a href="#auth-error">auth-error</a></li>
+                        <li><a href="#disconnect">disconnect</a></li>
+                        <li><a href="#online-users">online-users</a></li>
+                        <li><a href="#online-user-add">online-user-add</a></li>
+                        <li><a href="#online-user-remove">online-user-remove</a></li>
+                        <li><a href="#tasks@">tasks</a></li>
+                        <li><a href="#add-contributer@">add-contributer</a></li>
+                        <li><a href="#remove-contributer@">remove-contributer</a></li>
+                        <li><a href="#change-contributer@">change-contributer</a></li>
+                        <li><a href="#add-friend@">add-friend</a></li>
+                        <li><a href="add-friend-request@">add-friend-request</a></li>
+                        <li><a href="#remove-friend@">remove-friend</a></li>
+                        <li><a href="#emit" style="color: #03a9f4; font-size: 1.2em; font-weight: bold">Emit</a></li>
+                        <li><a href="#set-user">set-user</a></li>
+                        <li><a href="#chat-msg">chat-msg</a></li>
+                        <li><a href="#tasks">tasks</a></li>
+                        <li><a href="#add-contributer">add-contributer</a></li>
+                        <li><a href="#remove-contributer">remove-contributer</a></li>
+                        <li><a href="#change-contributer">change-contributer</a></li>
+                        <li><a href="#add-friend-request">add-friend-request</a></li>
+                        <li><a href="#add-friend">add-friend</a></li>
+                        <li><a href="#remove-friend">remove-friend</a></li>
+                    </ul>
+                </div>
+
+                <div class="col s12 m9 l10">
+
+                    <div id="listen" class="section scrollspy"></div>
+                    <h4>Events to listen</h4>
+
+                    <div id="verifyUser" class="section scrollspy">
+                        <h5>verifyUser event</h5>
+                        This event <span style="font-weight: 600">("verifyUser")</span> has to be listened on the user's end to verify user authentication.<br/> user will only be set as online user after verification of authentication token.<br/>
+                    </div>
+                    <div id="auth-error" class="section scrollspy">
+                        <h5>auth-error@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("online-users")</span> has to be listened on the user's end to identify authentication error or breach in security.
+                        <br/> The output will error message.
+                    </div>
+                    <div id="disconnect" class="section scrollspy">
+                        <h5>disconnect event</h5>
+                        This event <span style="font-weight: 600">("disconnect")</span> has to be listened, when the user is disconnected.<br/>
+                    </div>
+
+                    <div id="online-users" class="section scrollspy">
+                        <h5>online-users event</h5>
+                        This event <span style="font-weight: 600">("online-users")</span> has to be listened, to get list of online users when user logins.<br/>The output will be array of emails of users.
+                    </div>
+
+                    <div id="online-user-add" class="section scrollspy">
+                        <h5>online-user-add@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("online-user-add@&lt;authToken&gt;")</span> has to be listened, when the new online user is added.<br/>The output will be email of user.
+                    </div>
+
+                    <div id="online-user-remove" class="section scrollspy">
+                        <h5>online-user-remove@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("online-user-remove@&lt;authToken&gt;")</span> has to be listened, when a online user disconnects.<br/>The output will be email of user.
+                    </div>
+
+                    <div id="tasks@" class="section scrollspy">
+                        <h5>tasks@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("tasks@&lt;authToken&gt;")</span> has to be listened, when any user changes the list.<br/>The output will updated tasks of list and listId.
+                    </div>
+
+                    <div id="add-contributer@" class="section scrollspy">
+                        <h5>add-contributer@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("add-contributer@&lt;authToken&gt;")</span> has to be listened, when any new contributer is added to list.<br/>The output will contributer details and listId.
+                    </div>
+
+                    <div id="remove-contributer@" class="section scrollspy">
+                        <h5>remove-contributer@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("remove-contributer@&lt;authToken&gt;")</span> has to be listened, when any contributer is removed from list.<br/>The output will contributer email and listId.
+                    </div>
+
+                    <div id="change-contributer@" class="section scrollspy">
+                        <h5>change-contributer@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("change-contributer@&lt;authToken&gt;")</span> has to be listened, when any contributer access is changed in list.<br/>The output will contributer email, canEdit, modifiedOn and listId.
+                    </div>
+
+                    <div id="add-friend@" class="section scrollspy">
+                        <h5>add-friend@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("add-friend@&lt;authToken&gt;")</span> has to be listened, when any new friend has been added.<br/>The output will friend details.
+                    </div>
+
+                    <div id="add-friend-request@" class="section scrollspy">
+                        <h5>add-friend-request@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("add-friend-request@&lt;authToken&gt;")</span> has to be listened, when any new friend request has been arrived.<br/>The output will friend request details.
+                    </div>
+
+                    <div id="remove-friend@" class="section scrollspy">
+                        <h5>remove-friend@&lt;authToken&gt; event</h5>
+                        This event <span style="font-weight: 600">("remove-friend@&lt;authToken&gt;")</span> has to be listened, when any new friend has been removed.<br/>The output will friend's email.
+                    </div>
+                    <!-- -------------------------------------------------------------------------------------------------- -->
+                    <div id="emit" class="section scrollspy"></div>
+                    <h4>Events to emit</h4>
+
+                    <div id="set-user" class="section scrollspy">
+                        <h5>set-user event</h5>
+                        This event <span style="font-weight: 600">("set-user")</span> has to be emitted when a user comes online.<br/> User can only be set as online only after verification of authentication token. Which you have pass here. The following
+                        data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                authToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RpZCI6IndNTmtzdnlqQSIsImlhdCI6MTU5Mzk2Njc2NDYyMCwiZXhwIjoxNTk0MDUzMTY0LCJzdWIiOiJhdXRoVG9rZW4iLCJpc3MiOiJpbmN1YkNoYXQiLCJkYXRhIjp7InVzZXJJZCI6Inh4VGI2MW00RiIsImZpcnN0TmFtZSI6IlNhdXJhdiIsImxhc3ROYW1lIjoiR2FyZyIsImVtYWlsIjoic2F1cmF2Z2FyZzAwMUBnbWFpbC5jb20iLCJtb2JpbGVOdW1iZXIiOjc2OTYyNTY0MDAsImxpc3RzIjpbeyJpc0FjdGl2ZSI6dHJ1ZSwiY3JlYXRlZE9uIjoiMjAyMC0wNy0wNVQxMTowODoxNS4xOTVaIiwibW9kaWZpZWRPbiI6IjIwMjAtMDctMDVUMTE6MTA6NDMuMDAwWiIsImxpc3RJZCI6Iml6cEtlYW1oTSIsIm5hbWUiOiJsaXN0IDEifV0sIk9UUCI6IiQyYiQxMCRRMnpYVml5TXhmVDk0UndKRlJYSGxlUWdWbVJ2aklZOFhOay9HMUlVTXVSSnNFUXlrY1g4VyJ9fQ.E28Z1KzTfADn94HBJF2FGbrEraQSvyn3h4tds0vFkHc'
+                            }
+                        </pre>
+                    </div>
+                    <div id="tasks" class="section scrollspy">
+                        <h5>tasks event</h5>
+                        This event <span style="font-weight: 600">("tasks")</span> has to be emitted to send the updated list.<br/> The following data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                listId: 'aVlxl_QoL',
+                                email: 'abc@gmail.com'
+                                tasks: [
+                                    {
+                                        createdOn: "2020-07-05T17:03:19.000Z"
+                                        isOpen: true
+                                        modifiedOn: "2020-07-05T17:03:19.000Z"
+                                        subTasks: []
+                                        text: "task 1"
+                                    },
+                                    ................
+                                ]
+                            }
+                        </pre>
+                    </div>
+                    <div id="add-contributer" class="section scrollspy">
+                        <h5>add-contributert</h5>
+                        This event <span style="font-weight: 600">("add-contributer")</span> has to be emitted to send notification to all contributers that who has been added.<br/> The following data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                listId: 'aVlxl_QoL',
+                                email: 'abc@gmail.com'
+                                createdOn: "2020-07-05T17:03:19.000Z",
+                                name: 'list 1',
+                                canEdit: true,
+                            }
+                        </pre>
+                    </div>
+                    <div id="remove-contributer" class="section scrollspy">
+                        <h5>remove-contributer event</h5>
+                        This event <span style="font-weight: 600">("remove-contributer")</span> has to be emitted to send notification to all contributers that who has been removed.<br/>The following data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                listId: 'aVlxl_QoL',
+                                email: 'abc@gmail.com'
+                            }
+                        </pre>
+                    </div>
+                    <div id="change-contributer" class="section scrollspy">
+                        <h5>change-contributer event</h5>
+                        This event <span style="font-weight: 600">("change-contributer")</span> has to be emitted to send notification to all contributers that who's access has been changed.<br/> The following data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                listId: 'aVlxl_QoL',
+                                email: 'abc@gmail.com',
+                                modifiedOn: "2020-07-05T17:03:19.000Z",
+                                canEdit: true
+                            }
+                        </pre>
+                    </div>
+                    <div id="add-friend-request" class="section scrollspy">
+                        <h5>add-friend-request event</h5>
+                        This event <span style="font-weight: 600">("add-friend-request")</span> has to be emitted to notify user to whom request has been sent.<br/> The following data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                email: 'abc@gmail.com',
+                                createdOn: "2020-07-05T17:03:19.000Z",
+                                firstName: 'ABC',
+                                lastName: '123'
+                            }
+                        </pre>
+                    </div>
+                    <div id="add-friend" class="section scrollspy">
+                        <h5>add-friend event</h5>
+                        This event <span style="font-weight: 600">("add-friend")</span> has to be emitted to notify user who has been added as friend.<br/> The following data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                email: 'abc@gmail.com',
+                                createdOn: "2020-07-05T17:03:19.000Z",
+                                firstName: 'ABC',
+                                lastName: '123'
+                            }
+                        </pre>
+                    </div>
+                    <div id="remove-friend" class="section scrollspy">
+                        <h5>remove-friend event</h5>
+                        This event <span style="font-weight: 600">("remove-friend")</span> has to be emitted to notify which friend has been removed.<br/> The following data has to be emitted<br/>
+                        <pre>
+                            {
+                                userId: 'xxTb61m4F',
+                                email: 'abc@gmail.com'
+                            }
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <br/><br/><br/><br/>
+    <footer style="background-color: black; min-height: 3em">
+        <center style="color: white; margin: auto; padding-top: 1em;"></center>
+    </footer>
+    <!--  Scripts-->
+    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.1/js/materialize.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('.scrollspy').scrollSpy();
+        });
+    </script>
+    <script>
+        (function($) {
+            $(function() {
+
+                $('.button-collapse').sideNav();
+
+            }); // end of document ready
+        })(jQuery); // end of jQuery name space
+    </script>
+</body>
+
+</html>
