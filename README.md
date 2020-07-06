@@ -120,8 +120,8 @@ http://localhost:4200/
 
 ## Important links
 
-* [API Documentation]()
-* [Socket Endpoints Documentation]()
+* [API Documentation](http://todo-list-app-sauravgarg001.s3-website-us-east-1.amazonaws.com/)
+* [Socket Endpoints Documentation](http://todo-list-app-sauravgarg001.s3-website-us-east-1.amazonaws.com/eventDoc.html)
 * [Github repository for frontend](https://github.com/sauravgarg001/TODO-list-frontend)
 * [Github repository for frontend build version](https://github.com/sauravgarg001/TODO-list-angular)
 * [Github repository for backend](https://github.com/sauravgarg001/TODO-list-backend)
