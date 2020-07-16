@@ -88,7 +88,7 @@ let userController = {
                 UserModel.create(newUser)
                     .then((user) => {
                         logger.info('User Created', 'userController: createUser', 10);
-                        resolve();
+                        resolve(response.generate(false, 'User created', 200, null));
                     })
                     .catch((err) => {
                         logger.error(err.message, 'userController: createUser', 10);
@@ -102,9 +102,9 @@ let userController = {
 
         validateUserInput(req, res)
             .then(createUser)
-            .then(() => {
-                delete user.password;
-                res.send(response.generate(false, 'User created', 200, null));
+            .then((resolve) => {
+                res.status(resolve.status)
+                res.send(resolve);
             })
             .catch((err) => {
                 res.status(err.status);
